@@ -1,0 +1,88 @@
+package pl.spicymobile.mobience.sdk;
+
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
+
+import java.util.ArrayList;
+
+import pl.spicymobile.mobience.sdk.datacollectors.SDKAlarmsManager;
+import pl.spicymobile.mobience.sdk.datacollectors.beacon.BeaconCollector;
+import pl.spicymobile.mobience.sdk.hitemitter.NewHitEmitterManagerBroadcast;
+import pl.spicymobile.mobience.sdk.remoteconfig.RemoteConfigParserNew;
+import pl.spicymobile.mobience.sdk.utils.Consts;
+import pl.spicymobile.mobience.sdk.utils.SDKLog;
+import pl.spicymobile.mobience.sdk.utils.SDKUtils;
+import pl.spicymobile.mobience.sdk.utils.TimestampSynchronizer;
+import pl.spicymobile.mobience.sdk.utils.Utils;
+
+/**
+ /**
+ * Main application process receiver. Used for cummunication with :mobiencesdk process.
+ * Also monitor device boot, email change, etc.
+ */
+public class MobienceSDKReceiver extends BroadcastReceiver {
+    private static final String LOG_TAG = "MobienceSDKReceiver";
+
+    public static final String INTENT_FILTER_RECEIVER = "pl.spicymobile.mobience.sdk.newinstance";
+
+    public static final String INTENT_FILTER_AFTER_BOOT = "pl.spicymobile.mobience.sdk.bootcompleted";
+
+    public static final String INTENT_FILTER_SERVICE_STOP = "pl.spicymobile.mobience.sdk.servicestop";
+
+
+    public static final String EXTRAS_PACKAGE = "pl.spicymobile.mobience.sdk_package";
+
+    public static final String EXTRAS_MONITOR = "pl.spicymobile.mobience.sdk_monitor";
+
+    public static final String EXTRAS_COLLECTORS = "pl.spicymobile.mobience.sdk_datacollectors";
+
+
+    public static final String EXTRAS_EVENT_DATA = "pl.spicymobile.mobience.eventdata";
+
+    public static final String EXTRAS_CONFIG = "pl.spicymobile.mobience.config";
+
+    public static final String EXTRAS_EMAIL_CHANGE = "pl.spicymobile.mobience.email_set";
+
+    public static final String EXTRAS_FB_TOKEN = "pl.spicymobile.mobience.fb.token";
+
+
+
+   /* public static final String INTENT_FILTER_API_KEY = "pl.spicymobile.mobience.api.key";
+    public static final String INTENT_FILTER_APP_IDENTIFIER = "pl.spicymobile.mobience.app.identifier";
+    public static final String INTENT_FILTER_FB_TOKEN = "pl.spicymobile.mobience.fb.token";
+    public static final String INTENT_FILTER_INSTALL_SOURCE = "pl.spicymobile.mobience.install.source";
+    public static final String INTENT_FILTER_COLLECTORS = "pl.spicymobile.mobience.collectors";
+    public static final String INTENT_FILTER_API_KEY = "pl.spicymobile.mobience.apikey";
+    public static final String INTENT_FILTER_API_KEY = "pl.spicymobile.mobience.apikey";*/
+
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        try {
+            if (intent.getAction() != null) {
+                switch (intent.getAction()) {
+                    case "android.intent.action.BOOT_COMPLETED":
+                    case "android.intent.action.LOCKED_BOOT_COMPLETED": {
+                        SDKLog.i(LOG_TAG, "BootReceiver.onReceive() ON BOOT");
+                        ArrayList<Integer> mDataCollectors = SDKUtils.convertStringToListNumber(context.getSharedPreferences(Consts.PREFS_JRA_REMOTE, Context.MODE_PRIVATE).getString(Consts.PREFS_DATA_COLLECTORS, ""));
+                        SDKAlarmsManager sdkAlarmsManager = new SDKAlarmsManager(context);
+                        sdkAlarmsManager.registerDataCollectors(mDataCollectors);
+                        sdkAlarmsManager.registerActiveDataCollectors(mDataCollectors);
+                        sdkAlarmsManager.configureHitEmitter(NewHitEmitterManagerBroadcast.HIT_EMITTER_OFFLINE_REPEAT_TIME);
+                        break;
+                    }
+                    case EXTRAS_CONFIG: {
+                        String configJson = intent.getStringExtra("config");
+                        RemoteConfigParserNew.parseFromRemote(context.getSharedPreferences(Consts.PREFS_JRA_REMOTE, Context.MODE_PRIVATE), configJson);
+                        break;
+                    }
+                    case EXTRAS_EMAIL_CHANGE: {
+                        SharedPreferences.Editor edit = context.getSharedPreferences(Consts.PREFS_JRA_REMOTE, Context.MODE_PRIVATE).edit();
+                        edit.putString(Consts.PREFS_EMAIL, intent.getStringExtra("email")).apply();
+                        Utils.refreshIdentifiers(context);
+            

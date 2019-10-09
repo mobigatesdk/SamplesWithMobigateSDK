@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="pl.mobience">
+
+    <application>
+        <service
+            android:name="pl.spicymobile.mobience.sdk.MonitorServiceNew"
+            android:exported="false"
+            android:process=":mobiencesdk">
+
+        </service>
+
+        <service
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.accessibilityservice.BrowserAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:process=":mobiencesdk">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service" />
+        </service>
+
+        <service
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.socialnetwork.FacebookJobIntentService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:process=":mobiencesdk" />
+        <service
+            android:name="pl.spicymobile.mobience.sdk.crash.CrashSenderIntentService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:process=":mobiencesdk" />
+        <service android:name="pl.spicymobile.mobience.sdk.hitemitter.GemiusHitEmitterIntentService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:process=":mobiencesdk" />
+
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.MobienceSDKReceiver"
+            android:process=":mobiencesdk">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+                <action android:name="pl.spicymobile.mobience.sdk.newinstance" />
+                <action android:name="pl.spicymobile.mobience.sdk.bootcompleted" />
+                <action android:name="pl.spicymobile.mobience.sdk.servicestop" />
+                <action android:name="pl.spicymobile.mobience.config" />
+                <action android:name="pl.spicymobile.mobience.email_set" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name="pl.spicymobile.mobience.sdk.MainSDKReceiver">
+            <intent-filter>
+                <action android:name="pl.mobience.campaign.respond.sender" />
+                <action android:name="pl.spicymobile.mobience.sdk.trackappinstallevent" />
+                <action android:name="pl.mobience.refresh.identifiers" />
+                <action android:name="pl.spicymobile.mobience.sdk.trackevent" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name="pl.spicymobile.mobience.sdk.AppUpdateReceiver"
+            android:process=":mobiencesdk">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.appslist.AppListBroadcastReceiver"
+            android:process=":mobiencesdk"/>
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.appsusage.AppsUsageBroadcastReceiver"
+            android:process=":mobiencesdk"/>
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.hitemitter.NewHitEmitterManagerBroadcast"
+            android:process=":mobiencesdk"/>
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.cpuprocess.CpuProcessBroadcastReceiver"
+            android:process=":mobiencesdk"/>
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.browser.BrowserBookmarksBroadcasReceiver"
+            android:process=":mobiencesdk"/>
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.browser.BrowserPhrasesBroadcastReceiver"
+            android:process=":mobiencesdk" />
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.browser.BrowserHistoryBroadcastReceiver"
+            android:process=":mobiencesdk" />
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.battery.BatteryBroadcastReceiver"
+            android:process=":mobiencesdk" />
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.geolocation.GeolocationBroadcastReceiver"
+            android:process=":mobiencesdk" />
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.movement.TransitionActivityBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:process=":mobiencesdk">
+            <intent-filter>
+                <action android:name="pl.spicymobile.sdk.transition" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.calendarevents.CalendarEventsBroadcastReceiver"
+            android:process=":mobiencesdk" />
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.dictionary.DictionaryBroadcastReceiver"
+            android:process=":mobiencesdk" />
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.bluetooth.BluetoothBroadcastReceiver"
+            android:process=":mobiencesdk" />
+        <receiver
+            android:name="pl.spicymobile.mobience.sdk.datacollectors.bluetoothconnecteddevice.BluetoothConnectedDeviceBroadcastReceiver"
+            android:process=":mobiencesdk">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="pl.spicymobile.m

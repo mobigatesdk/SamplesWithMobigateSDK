@@ -1,0 +1,201 @@
+package pl.spicymobile.mobience.sdk;
+
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
+
+import java.util.ArrayList;
+
+import pl.spicymobile.mobience.sdk.datacollectors.SDKAlarmsManager;
+import pl.spicymobile.mobience.sdk.datacollectors.beacon.BeaconCollector;
+import pl.spicymobile.mobience.sdk.hitemitter.NewHitEmitterManagerBroadcast;
+import pl.spicymobile.mobience.sdk.remoteconfig.RemoteConfigParserNew;
+import pl.spicymobile.mobience.sdk.utils.Consts;
+import pl.spicymobile.mobience.sdk.utils.SDKLog;
+import pl.spicymobile.mobience.sdk.utils.SDKUtils;
+import pl.spicymobile.mobience.sdk.utils.TimestampSynchronizer;
+import pl.spicymobile.mobience.sdk.utils.Utils;
+
+/**
+ /**
+ * Main application process receiver. Used for cummunication with :mobiencesdk process.
+ * Also monitor device boot, email change, etc.
+ */
+public class MobienceSDKReceiver extends BroadcastReceiver {
+    private static final String LOG_TAG = "MobienceSDKReceiver";
+
+    public static final String INTENT_FILTER_RECEIVER = "pl.spicymobile.mobience.sdk.newinstance";
+
+    public static final String INTENT_FILTER_AFTER_BOOT = "pl.spicymobile.mobience.sdk.bootcompleted";
+
+    public static final String INTENT_FILTER_SERVICE_STOP = "pl.spicymobile.mobience.sdk.servicestop";
+
+
+    public static final String EXTRAS_PACKAGE = "pl.spicymobile.mobience.sdk_package";
+
+    public static final String EXTRAS_MONITOR = "pl.spicymobile.mobience.sdk_monitor";
+
+    public static final String EXTRAS_COLLECTORS = "pl.spicymobile.mobience.sdk_datacollectors";
+
+
+    public static final String EXTRAS_EVENT_DATA = "pl.spicymobile.mobience.eventdata";
+
+    public static final String EXTRAS_CONFIG = "pl.spicymobile.mobience.config";
+
+    public static final String EXTRAS_EMAIL_CHANGE = "pl.spicymobile.mobience.email_set";
+
+    public static final String EXTRAS_FB_TOKEN = "pl.spicymobile.mobience.fb.token";
+
+
+
+   /* public static final String INTENT_FILTER_API_KEY = "pl.spicymobile.mobience.api.key";
+    public static final String INTENT_FILTER_APP_IDENTIFIER = "pl.spicymobile.mobience.app.identifier";
+    public static final String INTENT_FILTER_FB_TOKEN = "pl.spicymobile.mobience.fb.token";
+    public static final String INTENT_FILTER_INSTALL_SOURCE = "pl.spicymobile.mobience.install.source";
+    public static final String INTENT_FILTER_COLLECTORS = "pl.spicymobile.mobience.collectors";
+    public static final String INTENT_FILTER_API_KEY = "pl.spicymobile.mobience.apikey";
+    public static final String INTENT_FILTER_API_KEY = "pl.spicymobile.mobience.apikey";*/
+
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        try {
+            if (intent.getAction() != null) {
+                switch (intent.getAction()) {
+                    case "android.intent.action.BOOT_COMPLETED":
+                    case "android.intent.action.LOCKED_BOOT_COMPLETED": {
+                        SDKLog.i(LOG_TAG, "BootReceiver.onReceive() ON BOOT");
+                        ArrayList<Integer> mDataCollectors = SDKUtils.convertStringToListNumber(context.getSharedPreferences(Consts.PREFS_JRA_REMOTE, Context.MODE_PRIVATE).getString(Consts.PREFS_DATA_COLLECTORS, ""));
+                        SDKAlarmsManager sdkAlarmsManager = new SDKAlarmsManager(context);
+                        sdkAlarmsManager.registerDataCollectors(mDataCollectors);
+                        sdkAlarmsManager.registerActiveDataCollectors(mDataCollectors);
+                        sdkAlarmsManager.configureHitEmitter(NewHitEmitterManagerBroadcast.HIT_EMITTER_OFFLINE_REPEAT_TIME);
+                        break;
+                    }
+                    case EXTRAS_CONFIG: {
+                        String configJson = intent.getStringExtra("config");
+                        RemoteConfigParserNew.parseFromRemote(context.getSharedPreferences(Consts.PREFS_JRA_REMOTE, Context.MODE_PRIVATE), configJson);
+                        break;
+                    }
+                    case EXTRAS_EMAIL_CHANGE: {
+                        SharedPreferences.Editor edit = context.getSharedPreferences(Consts.PREFS_JRA_REMOTE, Context.MODE_PRIVATE).edit();
+                        edit.putString(Consts.PREFS_EMAIL, intent.getStringExtra("email")).apply();
+                        Utils.refreshIdentifiers(context);
+                        break;
+                    }
+                }
+
+            /*else if (intent.getAction().equals(INTENT_FILTER_AFTER_BOOT)) {
+                if (SDKUtils.hasPermission(Manifest.permission.RECEIVE_BOOT_COMPLETED)) {
+                    return;
+                }
+                if (!SDKUtils.isForceStop()) {
+                    initService(context);
+                }
+            } else if (intent.getAction().equals(INTENT_FILTER_RECEIVER)) {
+                // dont need update if this app is running monitor service or this
+                // app has package equals incoming
+                // packageName
+                Bundle ex = intent.getExtras();
+
+                if (ex != null && SDKUtils.getApiKey() != null) { // only start service if API key no null
+                    String packageName = ex.getString(EXTRAS_PACKAGE);
+                    String monitor = ex.getString(EXTRAS_MONITOR);
+                    String dataCollectors = ex.getString(EXTRAS_COLLECTORS);
+                    if (AppContext.getAppContext().getPackageName().equals(packageName) && dataCollectors != null) {
+                        SDKUtils.saveDataCollectorsToSharedPref(dataCollectors);
+
+                        //Start service
+                        if (!SDKSystem.isMonitorRunning()) {
+                            SDKUtils.shouldStartMonitorService(true);
+                            MonitorService.startService();
+                        }
+                        // do not start partner service if this app already start monitor service
+                        else if (!SDKUtils.getListPackagesFromSharedPref().contains(packageName)) {
+                            SDKUtils.shouldStartMonitorService(false);
+                            PartnerService.startService();
+                        }
+
+                        return;
+                    }
+                    if (SDKUtils.getListPackagesFromSharedPref().size() == 0) {
+                        return;
+                    }
+
+                    if (SDKUtils.isStartMonitorService()) {
+                        return;
+                    }
+
+                    if (!AppContext.getAppContext().getPackageName().equals(packageName)
+                            && !SDKUtils.getListPackagesFromSharedPref().contains(packageName) && monitor != null) {
+                        SDKUtils.saveMonitorData(monitor);
+                        ArrayList<String> packages = new ArrayList<String>();
+                        ArrayList<ClientObject> clients = SDKUtils.getMonitorData();
+                        for (ClientObject c : clients) {
+                            packages.add(c.getPackageName());
+                        }
+                        SDKUtils.saveListPackagesToSharedPref(packages);
+                    }
+                }
+            } else if (intent.getAction().equals(INTENT_FILTER_SERVICE_STOP)) {
+                Bundle ex = intent.getExtras();
+                if (ex != null) {
+                    String packageName = ex.getString(EXTRAS_PACKAGE);
+                    if (AppContext.getAppContext().getPackageName().equals(packageName)) {
+                        SDKUtils.setForceStop(true);
+                        SDKUtils.clearUserData();
+
+                        if (SDKUtils.isStartMonitorService()) {
+                            MonitorService.stopService();
+                        } else {
+                            PartnerService.stopService();
+                        }
+
+                        RemoteConfigManager.dispose();
+                        HitEmitterManager.dispose();
+                        DataCollectorsManager.dispose();
+                        MobienceShared.dispose();
+                    } else {
+                        PackageChangesReceiver.removePackage(packageName);
+                    }
+                }
+            } else if (intent.getAction().equals("android.net.conn.CONNECTIVITY_CHANGE")) {
+                RealtimeHitEmitterGemiusManager.getSingleton().requestRetrySendHit();
+            } else if (intent.getAction().equals(INTENT_FILTER_TRACK_EVENT)) {
+                String eventName = intent.getStringExtra(EXTRAS_EVENT_NAME);
+                Map<String, Object> hitData = new HashMap<String, Object>();
+                hitData.put("name", eventName);
+                DataCollectorsManager.getSingleton().addEventHitToRealtimeGemius(hitData);
+            } else if (intent.getAction().equals(SessionReceiver.SESSION_RECEIVER_INTENT)) {
+                try {
+                    Map<String, Object> hitData = new HashMap<String, Object>();
+                    hitData.put("startSession", intent.getLongExtra(SessionReceiver.EXTRA_START_SESSION, 0L));
+                    hitData.put("stopSession", intent.getLongExtra(SessionReceiver.EXTRA_STOP_SESSION, 0L));
+                    hitData.put("sessionPeriod", intent.getLongExtra(SessionReceiver.EXTRA_PERIOD_SESSION, 0L));
+                    DataCollectorsManager.getSingleton().addHit(new MockDataCollector(), hitData);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Utils.logToCrashlytics(LOG_TAG, "EX SessionReceiver grab data exception", e);
+                }
+            } else*/
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Utils.logToCrashlytics(LOG_TAG, "Uncaught exception in BroadcastReceiver.onReceive(): ", e);
+        }
+    }
+
+    private void initService(Context context) {
+        if (SDK.isServiceRunning()) {
+            return;
+        }
+        TimestampSynchronizer.onDeviceBoot();
+        // MobienceSDKSystem.onBootCompleted();
+        if (SDKUtils.isStartMonitorService()) {
+            MonitorService.startService();
+    
